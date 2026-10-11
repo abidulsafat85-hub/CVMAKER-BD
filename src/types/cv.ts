@@ -145,7 +145,50 @@ export interface CVData {
   themeColor: string;
   fontFamily: string;
   template: 'teal-split' | 'modern-clean' | 'executive';
+  pageSize?: 'a4' | 'letter' | 'legal';
 }
+
+export type PageSize = 'a4' | 'letter' | 'legal';
+
+export interface PageSizeSpec {
+  name: PageSize;
+  label: string;
+  bnLabel: string;
+  widthPx: number; // At 96 DPI CSS screen resolution
+  heightPx: number;
+  widthMm: number;
+  heightMm: number;
+}
+
+export const PAGE_SIZE_SPECS: Record<PageSize, PageSizeSpec> = {
+  a4: {
+    name: 'a4',
+    label: 'A4 (210 × 297 mm)',
+    bnLabel: 'A4 (২১০ × ২৯৭ মি.মি.)',
+    widthPx: 794,
+    heightPx: 1123,
+    widthMm: 210,
+    heightMm: 297,
+  },
+  letter: {
+    name: 'letter',
+    label: 'Letter (8.5 × 11 in)',
+    bnLabel: 'লেটার (৮.৫ × ১১ ইঞ্চি)',
+    widthPx: 816,
+    heightPx: 1056,
+    widthMm: 215.9,
+    heightMm: 279.4,
+  },
+  legal: {
+    name: 'legal',
+    label: 'Legal (8.5 × 14 in)',
+    bnLabel: 'লিগ্যাল (৮.৫ × ১৪ ইঞ্চি)',
+    widthPx: 816,
+    heightPx: 1344,
+    widthMm: 215.9,
+    heightMm: 355.6,
+  },
+};
 
 // Education order: 1st Honours / Bachelor, 2nd HSC / A-Level / Alim, 3rd SSC / O-Level / Dakhil
 export const EDUCATION_LEVEL_RANKS: Record<EducationLevel, number> = {

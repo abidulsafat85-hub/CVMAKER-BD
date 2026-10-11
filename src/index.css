@@ -8,6 +8,13 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Plus Jakarta Sans', 'Noto Sans Bengali', -apple-system, BlinkMacSystemFont, sans-serif;
   }
+
+  /* Prevent mobile browsers from auto-zooming in on input focus by setting 16px font size on small screens */
+  @media (max-width: 767px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
 }
 
 /* Custom scrollbar */

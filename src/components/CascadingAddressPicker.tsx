@@ -1,7 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AddressBlock } from '../types/cv';
-import { BANGLADESH_DIVISIONS } from '../data/bangladeshGeo';
-import { Country, State, City } from 'country-state-city';
 import { Language, TRANSLATIONS } from '../data/translations';
 import { MapPin } from 'lucide-react';
 
@@ -28,7 +26,33 @@ export function formatFullAddress(addr: AddressBlock): string {
   return cascade;
 }
 
-export const CascadingAddressPicker: React.FC<CascadingAddressPickerProps> = ({
+interface BdDivisionItem {
+  en: string;
+  bn: string;
+  districts: {
+    en: string;
+    bn: string;
+    thanas: { en: string; bn: string }[];
+  }[];
+}
+
+let cachedBdDivisions: BdDivisionItem[] | null = null;
+let cscModule: typeof import('country-state-city') | null = null;
+
+const DEFAULT_POPULAR_COUNTRIES = [
+  { name: 'Bangladesh', isoCode: 'BD' },
+  { name: 'United States', isoCode: 'US' },
+  { name: 'United Kingdom', isoCode: 'GB' },
+  { name: 'Canada', isoCode: 'CA' },
+  { name: 'Australia', isoCode: 'AU' },
+  { name: 'United Arab Emirates', isoCode: 'AE' },
+  { name: 'Saudi Arabia', isoCode: 'SA' },
+  { name: 'India', isoCode: 'IN' },
+  { name: 'Germany', isoCode: 'DE' },
+  { name: 'Malaysia', isoCode: 'MY' },
+];
+
+const CascadingAddressPickerComponent: React.FC<CascadingAddressPickerProps> = ({
   label,
   value,
   onChange,
@@ -38,20 +62,60 @@ export const CascadingAddressPicker: React.FC<CascadingAddressPickerProps> = ({
   const t = TRANSLATIONS[lang];
   const isBN = value.country === 'Bangladesh' || value.country === 'বাংলাদেশ';
 
+  const [bdDivisionsData, setBdDivisionsData] = useState<BdDivisionItem[]>(() => cachedBdDivisions || []);
+  const [csc, setCsc] = useState<typeof import('country-state-city') | null>(() => cscModule);
+
+  // Lazy load Bangladesh Geo data on mount
+  useEffect(() => {
+    if (cachedBdDivisions) {
+      setBdDivisionsData(cachedBdDivisions);
+    } else {
+      import('../data/bangladeshGeo').then((mod) => {
+        cachedBdDivisions = mod.BANGLADESH_DIVISIONS;
+        setBdDivisionsData(mod.BANGLADESH_DIVISIONS);
+      });
+    }
+  }, []);
+
+  // Lazy load country-state-city if country is not Bangladesh or on demand
+  const loadCSC = useCallback(() => {
+    if (cscModule) {
+      setCsc(cscModule);
+      return;
+    }
+    import('country-state-city').then((mod) => {
+      cscModule = mod;
+      setCsc(mod);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isBN) {
+      loadCSC();
+    }
+  }, [isBN, loadCSC]);
+
   // All countries list with Bangladesh first
   const allCountries = useMemo(() => {
-    const list = Country.getAllCountries().map((c) => ({
-      name: c.name,
-      isoCode: c.isoCode,
-    }));
-    // Ensure Bangladesh is at the top
-    const bdIndex = list.findIndex((c) => c.isoCode === 'BD' || c.name === 'Bangladesh');
-    if (bdIndex > -1) {
-      const [bd] = list.splice(bdIndex, 1);
-      return [bd, ...list];
+    if (csc) {
+      const list = csc.Country.getAllCountries().map((c) => ({
+        name: c.name,
+        isoCode: c.isoCode,
+      }));
+      const bdIndex = list.findIndex((c) => c.isoCode === 'BD' || c.name === 'Bangladesh');
+      if (bdIndex > -1) {
+        const [bd] = list.splice(bdIndex, 1);
+        return [bd, ...list];
+      }
+      return list;
     }
-    return list;
-  }, []);
+
+    // Default fast initial country list
+    if (value.country && !DEFAULT_POPULAR_COUNTRIES.some((c) => c.name === value.country)) {
+      return [...DEFAULT_POPULAR_COUNTRIES, { name: value.country, isoCode: '' }];
+    }
+    return DEFAULT_POPULAR_COUNTRIES;
+  }, [csc, value.country]);
 
   const selectedCountryObj = useMemo(() => {
     return allCountries.find((c) => c.name === value.country);
@@ -59,18 +123,18 @@ export const CascadingAddressPicker: React.FC<CascadingAddressPickerProps> = ({
 
   // Bangladesh offline divisions
   const bdDivisions = useMemo(() => {
-    return BANGLADESH_DIVISIONS.map((d) => ({
+    return bdDivisionsData.map((d) => ({
       en: d.en,
       bn: d.bn,
       label: lang === 'bn' ? d.bn : d.en,
       value: d.en,
     }));
-  }, [lang]);
+  }, [bdDivisionsData, lang]);
 
   // Bangladesh offline districts
   const bdDistricts = useMemo(() => {
     if (!isBN || !value.divisionState) return [];
-    const div = BANGLADESH_DIVISIONS.find(
+    const div = bdDivisionsData.find(
       (d) => d.en.toLowerCase() === value.divisionState.toLowerCase()
     );
     if (!div) return [];
@@ -80,12 +144,12 @@ export const CascadingAddressPicker: React.FC<CascadingAddressPickerProps> = ({
       label: lang === 'bn' ? dist.bn : dist.en,
       value: dist.en,
     }));
-  }, [isBN, value.divisionState, lang]);
+  }, [isBN, value.divisionState, bdDivisionsData, lang]);
 
   // Bangladesh offline thanas
   const bdThanas = useMemo(() => {
     if (!isBN || !value.divisionState || !value.district) return [];
-    const div = BANGLADESH_DIVISIONS.find(
+    const div = bdDivisionsData.find(
       (d) => d.en.toLowerCase() === value.divisionState.toLowerCase()
     );
     if (!div) return [];
@@ -99,16 +163,16 @@ export const CascadingAddressPicker: React.FC<CascadingAddressPickerProps> = ({
       label: lang === 'bn' ? th.bn : th.en,
       value: th.en,
     }));
-  }, [isBN, value.divisionState, value.district, lang]);
+  }, [isBN, value.divisionState, value.district, bdDivisionsData, lang]);
 
   // Other countries states & cities via country-state-city
   const foreignStates = useMemo(() => {
-    if (isBN || !selectedCountryObj) return [];
-    return State.getStatesOfCountry(selectedCountryObj.isoCode).map((s) => ({
+    if (isBN || !selectedCountryObj || !csc || !selectedCountryObj.isoCode) return [];
+    return csc.State.getStatesOfCountry(selectedCountryObj.isoCode).map((s) => ({
       name: s.name,
       isoCode: s.isoCode,
     }));
-  }, [isBN, selectedCountryObj]);
+  }, [isBN, selectedCountryObj, csc]);
 
   const foreignStateObj = useMemo(() => {
     if (!foreignStates.length) return null;
@@ -116,11 +180,11 @@ export const CascadingAddressPicker: React.FC<CascadingAddressPickerProps> = ({
   }, [foreignStates, value.divisionState]);
 
   const foreignCities = useMemo(() => {
-    if (isBN || !selectedCountryObj || !foreignStateObj) return [];
-    return City.getCitiesOfState(selectedCountryObj.isoCode, foreignStateObj.isoCode).map(
+    if (isBN || !selectedCountryObj || !foreignStateObj || !csc || !selectedCountryObj.isoCode) return [];
+    return csc.City.getCitiesOfState(selectedCountryObj.isoCode, foreignStateObj.isoCode).map(
       (c) => c.name
     );
-  }, [isBN, selectedCountryObj, foreignStateObj]);
+  }, [isBN, selectedCountryObj, foreignStateObj, csc]);
 
   // Handlers with parent-to-child reset
   const handleCountryChange = (newCountry: string) => {
@@ -165,20 +229,20 @@ export const CascadingAddressPicker: React.FC<CascadingAddressPickerProps> = ({
   };
 
   return (
-    <div className="space-y-3 p-3.5 bg-slate-50/70 rounded-xl border border-slate-200/80">
+    <div className="space-y-3 p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-slate-50/70">
       <div className="flex items-center justify-between">
-        <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
           <MapPin className="w-3.5 h-3.5 text-teal-600" />
           <span>{label}</span>
         </label>
-        {value.country && (
-          <span className="text-[11px] text-teal-700 font-semibold truncate max-w-[60%] text-right">
-            {formatFullAddress(value)}
+        {isBN && (
+          <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            {lang === 'bn' ? 'বাংলাদেশ (অফলাইন জেলা-থানা)' : 'Bangladesh (Instant BD Selector)'}
           </span>
         )}
       </div>
 
-      {/* Optional Village/House/Road/Post Code Line */}
+      {/* Street / Road / House / Village / Post Office */}
       <div>
         <label className="block text-[11px] font-semibold text-slate-600 mb-1">
           {t.streetLine}
@@ -188,83 +252,91 @@ export const CascadingAddressPicker: React.FC<CascadingAddressPickerProps> = ({
           disabled={disabled}
           value={value.streetRoadPostCode || ''}
           onChange={(e) => handleStreetChange(e.target.value)}
-          placeholder="e.g. House 12, Road 4, Sector 7, Uttara / Vill: Shampur, Post: 1230"
-          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden disabled:bg-slate-100 disabled:text-slate-400"
+          placeholder={
+            lang === 'bn'
+              ? 'বাড়ি #১২, রোড #৪, গ্রাম/এলাকা, পোস্ট কোড'
+              : 'House #12, Road #4, Area, Post Code'
+          }
+          className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden transition shadow-2xs disabled:bg-slate-100 disabled:text-slate-400"
         />
       </div>
 
-      {/* 1. Country dropdown first. Nothing else is shown until a country is selected. */}
-      <div>
-        <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-          {t.country} *
-        </label>
-        <select
-          disabled={disabled}
-          value={value.country}
-          onChange={(e) => handleCountryChange(e.target.value)}
-          className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden disabled:bg-slate-100"
-        >
-          <option value="">-- {t.country} --</option>
-          {allCountries.map((c) => (
-            <option key={c.isoCode} value={c.name}>
-              {c.name === 'Bangladesh' && lang === 'bn' ? 'বাংলাদেশ' : c.name}
-            </option>
-          ))}
-        </select>
+      {/* Row 1: Country & Division/State */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Country */}
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+            {t.country}
+          </label>
+          <select
+            disabled={disabled}
+            value={value.country || 'Bangladesh'}
+            onFocus={loadCSC}
+            onMouseEnter={loadCSC}
+            onChange={(e) => handleCountryChange(e.target.value)}
+            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden transition disabled:bg-slate-100"
+          >
+            {allCountries.map((c) => (
+              <option key={c.name} value={c.name}>
+                {c.name === 'Bangladesh' && lang === 'bn' ? 'বাংলাদেশ (Bangladesh)' : c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Division / State */}
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+            {t.division}
+          </label>
+          {isBN ? (
+            <select
+              disabled={disabled}
+              value={value.divisionState}
+              onChange={(e) => handleDivisionChange(e.target.value)}
+              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden disabled:bg-slate-100"
+            >
+              <option value="">-- {t.division} --</option>
+              {bdDivisions.map((div) => (
+                <option key={div.value} value={div.value}>
+                  {div.label}
+                </option>
+              ))}
+            </select>
+          ) : foreignStates.length > 0 ? (
+            <select
+              disabled={disabled}
+              value={value.divisionState}
+              onChange={(e) => handleDivisionChange(e.target.value)}
+              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden disabled:bg-slate-100"
+            >
+              <option value="">-- {t.division} --</option>
+              {foreignStates.map((st) => (
+                <option key={st.isoCode || st.name} value={st.name}>
+                  {st.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              disabled={disabled}
+              value={value.divisionState}
+              onChange={(e) => handleDivisionChange(e.target.value)}
+              placeholder="State / Province"
+              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden disabled:bg-slate-100"
+            />
+          )}
+        </div>
       </div>
 
-      {/* Cascading levels: only shown when Country is selected! */}
-      {value.country && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 animate-in fade-in">
-          {/* 2. Division / State */}
+      {/* Row 2: District & Thana/City (Dynamic Cascading) */}
+      {value.divisionState && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-200/60 animate-in fade-in">
+          {/* District */}
           <div>
             <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-              {t.division} *
-            </label>
-            {isBN ? (
-              <select
-                disabled={disabled}
-                value={value.divisionState}
-                onChange={(e) => handleDivisionChange(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden disabled:bg-slate-100"
-              >
-                <option value="">-- {t.division} --</option>
-                {bdDivisions.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
-            ) : foreignStates.length > 0 ? (
-              <select
-                disabled={disabled}
-                value={value.divisionState}
-                onChange={(e) => handleDivisionChange(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden disabled:bg-slate-100"
-              >
-                <option value="">-- {t.division} --</option>
-                {foreignStates.map((s) => (
-                  <option key={s.isoCode} value={s.name}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="text"
-                disabled={disabled}
-                value={value.divisionState}
-                onChange={(e) => handleDivisionChange(e.target.value)}
-                placeholder="State / Province"
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden"
-              />
-            )}
-          </div>
-
-          {/* 3. District */}
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-              {t.district} *
+              {t.district}
             </label>
             {isBN ? (
               <select
@@ -292,10 +364,10 @@ export const CascadingAddressPicker: React.FC<CascadingAddressPickerProps> = ({
             )}
           </div>
 
-          {/* 4. Thana / Upazila / City */}
+          {/* Thana / City */}
           <div>
             <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-              {t.thana} *
+              {t.thana}
             </label>
             {isBN ? (
               <select
@@ -341,3 +413,5 @@ export const CascadingAddressPicker: React.FC<CascadingAddressPickerProps> = ({
     </div>
   );
 };
+
+export const CascadingAddressPicker = React.memo(CascadingAddressPickerComponent);

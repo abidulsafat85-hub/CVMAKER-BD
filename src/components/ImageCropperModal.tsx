@@ -2,7 +2,10 @@ import React, { useState, useCallback, useEffect } from 'react';
 import Cropper, { Area } from 'react-easy-crop';
 import { ZoomIn, RotateCw, X, Check, Crop, Sparkles, Wand2, Loader2, Eye, EyeOff } from 'lucide-react';
 import { TRANSLATIONS, Language } from '../data/translations';
-import { processPhotoWithAI } from '../utils/aiBackgroundRemoval';
+async function runAIProcessing(canvas: HTMLCanvasElement, options: any) {
+  const { processPhotoWithAI } = await import('../utils/aiBackgroundRemoval');
+  return processPhotoWithAI(canvas, options);
+}
 
 interface ImageCropperModalProps {
   isOpen: boolean;
@@ -115,7 +118,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
       );
 
       const croppedCanvas = await createCroppedCanvas(imageSrc, croppedAreaPixels, rotation);
-      const processed = await processPhotoWithAI(croppedCanvas, {
+      const processed = await runAIProcessing(croppedCanvas, {
         applyWhiteBg: enableWhite,
         enhanceClarity: enableEnhance,
         targetWidth: croppedCanvas.width,
@@ -176,7 +179,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
       }
 
       // 3. Process with AI
-      const finalImage = await processPhotoWithAI(croppedCanvas, {
+      const finalImage = await runAIProcessing(croppedCanvas, {
         applyWhiteBg: whiteBg,
         enhanceClarity: enhance,
         targetWidth: croppedCanvas.width,

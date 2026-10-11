@@ -1,5 +1,5 @@
 import React from 'react';
-import { CVData, EDUCATION_LEVEL_RANKS } from '../../types/cv';
+import { CVData, EDUCATION_LEVEL_RANKS, PAGE_SIZE_SPECS, PageSize } from '../../types/cv';
 import { formatFullAddress } from '../CascadingAddressPicker';
 import {
   User,
@@ -16,7 +16,7 @@ interface CVPreviewProps {
   isPdfMode?: boolean;
 }
 
-export const CVPreview: React.FC<CVPreviewProps> = ({ data, isPdfMode = false }) => {
+const CVPreviewComponent: React.FC<CVPreviewProps> = ({ data, isPdfMode = false }) => {
   const {
     personal,
     objective,
@@ -31,9 +31,11 @@ export const CVPreview: React.FC<CVPreviewProps> = ({ data, isPdfMode = false })
     references,
     interests,
     themeColor,
+    pageSize = 'a4',
   } = data;
 
   const hexTheme = themeColor || '#389ba8';
+  const pageSpec = PAGE_SIZE_SPECS[pageSize as PageSize] || PAGE_SIZE_SPECS.a4;
 
   // Format bullet lines helper
   const renderBullets = (text: string) => {
@@ -55,16 +57,21 @@ export const CVPreview: React.FC<CVPreviewProps> = ({ data, isPdfMode = false })
   );
 
   const formattedPresentAddr = formatFullAddress(personal.presentAddress);
+  const formattedPermanentAddr = !personal.sameAsPresentAddress
+    ? formatFullAddress(personal.permanentAddress)
+    : '';
 
   return (
     <div
       style={{
         backgroundColor: '#ffffff',
         color: '#0f172a',
-        width: '100%',
-        maxWidth: '794px',
-        minHeight: '1123px',
-        maxHeight: isPdfMode ? '1123px' : undefined,
+        width: `${pageSpec.widthPx}px`,
+        minWidth: `${pageSpec.widthPx}px`,
+        maxWidth: `${pageSpec.widthPx}px`,
+        minHeight: `${pageSpec.heightPx}px`,
+        height: `${pageSpec.heightPx}px`,
+        maxHeight: isPdfMode ? `${pageSpec.heightPx}px` : undefined,
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         boxSizing: 'border-box',
         position: 'relative',
@@ -216,7 +223,20 @@ export const CVPreview: React.FC<CVPreviewProps> = ({ data, isPdfMode = false })
                 <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <MapPin style={{ width: '9px', height: '9px', color: '#ffffff' }} />
                 </div>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formattedPresentAddr}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {formattedPermanentAddr ? `Present: ${formattedPresentAddr}` : formattedPresentAddr}
+                </span>
+              </div>
+            )}
+
+            {formattedPermanentAddr && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <MapPin style={{ width: '9px', height: '9px', color: '#ffffff' }} />
+                </div>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  Permanent: {formattedPermanentAddr}
+                </span>
               </div>
             )}
 
@@ -674,3 +694,5 @@ export const CVPreview: React.FC<CVPreviewProps> = ({ data, isPdfMode = false })
     </div>
   );
 };
+
+export const CVPreview = React.memo(CVPreviewComponent);

@@ -14,18 +14,16 @@ import {
   BANGLADESH_EDUCATION_BOARDS,
   BANGLADESH_EDUCATION_GROUPS,
 } from '../../types/cv';
-import {
-  POPULAR_BD_UNIVERSITIES,
-  COMMON_UNIVERSITY_DEPARTMENTS,
-  getUniversityCourses,
-} from '../../data/bdUniversities';
-import { POPULAR_BD_COLLEGES, POPULAR_BD_SCHOOLS, searchInstitutions } from '../../data/bdInstitutions';
 import { CascadingAddressPicker } from '../CascadingAddressPicker';
+
+let cachedUniversitiesMod: typeof import('../../data/bdUniversities') | null = null;
+let cachedInstitutionsMod: typeof import('../../data/bdInstitutions') | null = null;
 import { Language, TRANSLATIONS } from '../../data/translations';
 import {
   User,
   GraduationCap,
   Briefcase,
+  BriefcaseBusiness,
   Award,
   Sparkles,
   Heart,
@@ -37,10 +35,17 @@ import {
   ChevronUp,
   BookOpen,
   FolderGit2,
+  FolderKanban,
   Users2,
+  Users,
   X,
   Check,
   Globe,
+  ImagePlus,
+  Target,
+  Wrench,
+  Trophy,
+  ContactRound,
 } from 'lucide-react';
 
 interface CVEditorProps {
@@ -50,23 +55,42 @@ interface CVEditorProps {
   lang: Language;
 }
 
-export const CVEditor: React.FC<CVEditorProps> = ({
+const CVEditorComponent: React.FC<CVEditorProps> = ({
   data,
   onChange,
   onRequestCrop,
   lang,
 }) => {
   const t = TRANSLATIONS[lang];
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    personal: true,
-    education: true,
-    projects: true,
-    skills: true,
-    work: true,
-    training: false,
-    references: false,
-    more: false,
-    objective: false,
+  const [uniMod, setUniMod] = useState(() => cachedUniversitiesMod);
+  const [instMod, setInstMod] = useState(() => cachedInstitutionsMod);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    // On mobile (< 768px), keep only Personal Information open initially so user is not overwhelmed
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if (isMobile) {
+      return {
+        personal: true,
+        education: false,
+        projects: false,
+        skills: false,
+        work: false,
+        training: false,
+        references: false,
+        more: false,
+        objective: false,
+      };
+    }
+    return {
+      personal: true,
+      education: true,
+      projects: true,
+      skills: true,
+      work: true,
+      training: false,
+      references: false,
+      more: false,
+      objective: false,
+    };
   });
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<{ id: string; type: 'inst' | 'dept' } | null>(null);
@@ -76,6 +100,30 @@ export const CVEditor: React.FC<CVEditorProps> = ({
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const isSectionOpen = (key: string) => !!openSections[key];
+
+  useEffect(() => {
+    if (openSections.education) {
+      if (!cachedUniversitiesMod) {
+        import('../../data/bdUniversities').then((mod) => {
+          cachedUniversitiesMod = mod;
+          setUniMod(mod);
+        });
+      }
+      if (!cachedInstitutionsMod) {
+        import('../../data/bdInstitutions').then((mod) => {
+          cachedInstitutionsMod = mod;
+          setInstMod(mod);
+        });
+      }
+    }
+  }, [openSections.education]);
+
+  const popularUniversities = uniMod?.POPULAR_BD_UNIVERSITIES || [];
+  const commonDepartments = uniMod?.COMMON_UNIVERSITY_DEPARTMENTS || [];
+  const getCourses = uniMod?.getUniversityCourses || (() => []);
+  const popularColleges = instMod?.POPULAR_BD_COLLEGES || [];
+  const popularSchools = instMod?.POPULAR_BD_SCHOOLS || [];
+  const searchInst = instMod?.searchInstitutions || ((_q: string, _l: any[]) => []);
 
   const jumpToSection = (sectionKey: string) => {
     setOpenSections((prev) => ({ ...prev, [sectionKey]: true }));
@@ -139,18 +187,18 @@ export const CVEditor: React.FC<CVEditorProps> = ({
     }
   };
 
-  // Reusable inline delete button with confirmation
+  // Reusable inline delete button with confirmation (min 40px touch area on mobile)
   const renderDeleteControl = (id: string, deleteFn: () => void) => {
     if (deleteConfirmId === id) {
       return (
-        <div className="flex items-center gap-1.5 bg-red-50 py-1 px-2 rounded-lg border border-red-200 animate-in fade-in">
+        <div className="flex items-center gap-1.5 bg-red-50 py-1 px-2 rounded-xl border border-red-200 animate-in fade-in min-h-[38px]">
           <span className="text-[11px] font-bold text-red-700">
             {lang === 'bn' ? 'মুছবেন?' : 'Delete?'}
           </span>
           <button
             type="button"
             onClick={() => confirmAndDelete(id, deleteFn)}
-            className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-700 text-white text-[11px] font-semibold transition cursor-pointer"
+            className="px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-[11px] font-semibold transition cursor-pointer min-h-[32px]"
             title={lang === 'bn' ? 'নিশ্চিত করুন' : 'Confirm Delete'}
           >
             {lang === 'bn' ? 'হ্যাঁ' : 'Yes'}
@@ -158,10 +206,10 @@ export const CVEditor: React.FC<CVEditorProps> = ({
           <button
             type="button"
             onClick={() => setDeleteConfirmId(null)}
-            className="px-1.5 py-0.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] transition cursor-pointer"
+            className="px-2 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] transition cursor-pointer min-h-[32px]"
             title={lang === 'bn' ? 'বাতিল' : 'Cancel'}
           >
-            <X className="w-3 h-3 inline" />
+            <X className="w-3.5 h-3.5 inline" />
           </button>
         </div>
       );
@@ -171,8 +219,9 @@ export const CVEditor: React.FC<CVEditorProps> = ({
       <button
         type="button"
         onClick={() => setDeleteConfirmId(id)}
-        className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition cursor-pointer"
+        className="text-slate-400 hover:text-red-600 p-2 sm:p-1.5 min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xl hover:bg-red-50 active:bg-red-100 transition cursor-pointer"
         title={lang === 'bn' ? 'মুছুন' : 'Delete'}
+        aria-label={lang === 'bn' ? 'মুছুন' : 'Delete'}
       >
         <Trash2 className="w-4 h-4" />
       </button>
@@ -583,9 +632,9 @@ export const CVEditor: React.FC<CVEditorProps> = ({
 
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold cursor-pointer shadow-2xs transition">
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{t.photoUpload}</span>
+                    <label className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[38px] rounded-xl bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-semibold cursor-pointer shadow-2xs transition">
+                      <ImagePlus className="w-4 h-4 shrink-0" />
+                      <span>{data.personal.avatarUrl ? (lang === 'bn' ? 'ছবি পরিবর্তন' : 'Change Photo') : t.photoUpload}</span>
                       <input
                         type="file"
                         accept="image/png, image/jpeg, image/webp"
@@ -598,9 +647,10 @@ export const CVEditor: React.FC<CVEditorProps> = ({
                       <button
                         type="button"
                         onClick={() => updatePersonal('avatarUrl', '')}
-                        className="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-red-50 text-red-600 font-medium transition cursor-pointer"
+                        className="px-3 py-2 min-h-[38px] rounded-xl border border-red-200 hover:bg-red-50 text-red-600 font-medium transition cursor-pointer flex items-center gap-1.5"
                       >
-                        {t.removePhoto}
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>{t.removePhoto}</span>
                       </button>
                     )}
                   </div>
@@ -652,7 +702,8 @@ export const CVEditor: React.FC<CVEditorProps> = ({
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">{t.phone} *</label>
                   <input
-                    type="text"
+                    type="tel"
+                    inputMode="tel"
                     value={data.personal.phone}
                     onChange={(e) => updatePersonal('phone', e.target.value)}
                     placeholder="+880 1712-345678"
@@ -714,8 +765,9 @@ export const CVEditor: React.FC<CVEditorProps> = ({
                 </div>
               </div>
 
-              {/* Cascading Address Picker */}
-              <div className="space-y-3 pt-1">
+              {/* Cascading Address Pickers: Present & Permanent Address */}
+              <div className="space-y-4 pt-1">
+                {/* 1. Present Address */}
                 <CascadingAddressPicker
                   label={t.presentAddress}
                   value={data.personal.presentAddress}
@@ -731,6 +783,67 @@ export const CVEditor: React.FC<CVEditorProps> = ({
                   }}
                   lang={lang}
                 />
+
+                {/* Same as Present Address Checkbox */}
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!data.personal.sameAsPresentAddress}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        const updatedPersonal = {
+                          ...data.personal,
+                          sameAsPresentAddress: checked,
+                          permanentAddress: checked
+                            ? { ...data.personal.presentAddress }
+                            : { ...data.personal.permanentAddress },
+                        };
+                        onChange({ ...data, personal: updatedPersonal });
+                      }}
+                      className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500 cursor-pointer"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">
+                        {t.sameAsPresent}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {lang === 'bn'
+                          ? 'বর্তমান ও স্থায়ী ঠিকানা একই হলে টিক দিন, অন্যথায় নিচে স্থায়ী ঠিকানা দিন'
+                          : 'Check if present and permanent addresses are identical'}
+                      </span>
+                    </div>
+                  </label>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                    data.personal.sameAsPresentAddress
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-amber-100 text-amber-800'
+                  }`}>
+                    {data.personal.sameAsPresentAddress
+                      ? (lang === 'bn' ? 'একই ঠিকানা' : 'Identical')
+                      : (lang === 'bn' ? 'আলাদা ঠিকানা' : 'Different')}
+                  </span>
+                </div>
+
+                {/* 2. Permanent Address (Displayed when NOT same as present address) */}
+                {!data.personal.sameAsPresentAddress && (
+                  <div className="p-3.5 bg-amber-50/60 rounded-xl border border-amber-200/80 space-y-2 animate-in fade-in">
+                    <CascadingAddressPicker
+                      label={t.permanentAddress}
+                      value={data.personal.permanentAddress}
+                      onChange={(addr) => {
+                        onChange({
+                          ...data,
+                          personal: {
+                            ...data.personal,
+                            permanentAddress: addr,
+                          },
+                        });
+                      }}
+                      lang={lang}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -747,7 +860,7 @@ export const CVEditor: React.FC<CVEditorProps> = ({
             className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100/80 font-bold text-sm text-slate-800 flex items-center justify-between transition cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <Sparkles className="w-4 h-4 text-teal-600" />
+              <Target className="w-4 h-4 text-teal-600" />
               <span>{t.objective}</span>
             </div>
             {isSectionOpen('objective') ? (
@@ -796,7 +909,7 @@ export const CVEditor: React.FC<CVEditorProps> = ({
             <div className="p-4 space-y-4 bg-white border-t border-slate-100 text-xs">
               {/* Datalist for Popular BD Universities */}
               <datalist id="bd-university-datalist">
-                {POPULAR_BD_UNIVERSITIES.map((uni) => (
+                {popularUniversities.slice(0, 45).map((uni) => (
                   <option key={uni.en} value={uni.en} />
                 ))}
               </datalist>
@@ -812,7 +925,7 @@ export const CVEditor: React.FC<CVEditorProps> = ({
                   edu.level === 'HSC / A-Level / Alim / Diploma';
 
                 // Real course lookup for selected university
-                const availableUniCourses = getUniversityCourses(edu.institution);
+                const availableUniCourses = getCourses(edu.institution);
 
                 return (
                   <div
@@ -932,20 +1045,20 @@ export const CVEditor: React.FC<CVEditorProps> = ({
                           let suggestions: { name: string; short?: string; city?: string; isPrivate?: boolean }[] = [];
 
                           if (isVarsity) {
-                            suggestions = POPULAR_BD_UNIVERSITIES.filter((u) => {
+                            suggestions = popularUniversities.filter((u) => {
                               const n = u.en.toLowerCase();
                               const s = u.shortName?.toLowerCase() || '';
                               return n.includes(query) || s === query || s.startsWith(query);
                             }).map((u) => ({ name: u.en, short: u.shortName }));
                           } else if (edu.level === 'HSC / A-Level / Alim / Diploma') {
-                            suggestions = searchInstitutions(query, POPULAR_BD_COLLEGES);
+                            suggestions = searchInst(query, popularColleges);
                           } else if (edu.level === 'SSC / O-Level / Dakhil') {
-                            suggestions = searchInstitutions(query, POPULAR_BD_SCHOOLS);
+                            suggestions = searchInst(query, popularSchools);
                           }
 
                           return suggestions.length > 0 ? (
                             <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-30 max-h-56 overflow-y-auto divide-y divide-slate-100">
-                              {suggestions.slice(0, 18).map((item) => (
+                              {suggestions.slice(0, 35).map((item) => (
                                 <button
                                   key={item.name}
                                   type="button"
@@ -1120,8 +1233,8 @@ export const CVEditor: React.FC<CVEditorProps> = ({
 
                     {/* Varsity Course / Department Input with instant type-to-search dropdown */}
                     {isVarsity && (() => {
-                      const uniCourses = getUniversityCourses(edu.institution);
-                      const allCatalog = Array.from(new Set([...uniCourses, ...COMMON_UNIVERSITY_DEPARTMENTS]));
+                      const uniCourses = getCourses(edu.institution);
+                      const allCatalog = Array.from(new Set([...uniCourses, ...commonDepartments]));
                       const q = (edu.department || '').trim().toLowerCase();
                       const matchedList = allCatalog.filter((c) => {
                         if (!q) return false;
@@ -1170,7 +1283,7 @@ export const CVEditor: React.FC<CVEditorProps> = ({
                           {openDropdown?.id === edu.id && openDropdown?.type === 'dept' && q.length > 0 && (
                             <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 z-30 max-h-56 overflow-y-auto divide-y divide-slate-100">
                               {matchedList.length > 0 ? (
-                                matchedList.slice(0, 18).map((course) => (
+                                matchedList.slice(0, 35).map((course) => (
                                   <button
                                     key={course}
                                     type="button"
@@ -1338,7 +1451,7 @@ export const CVEditor: React.FC<CVEditorProps> = ({
             className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100/80 font-bold text-sm text-slate-800 flex items-center justify-between transition cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <Briefcase className="w-4 h-4 text-teal-600" />
+              <BriefcaseBusiness className="w-4 h-4 text-teal-600" />
               <span>{t.workExperience} ({data.workExperience.length})</span>
             </div>
             {isSectionOpen('work') ? (
@@ -1510,7 +1623,7 @@ export const CVEditor: React.FC<CVEditorProps> = ({
             className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100/80 font-bold text-sm text-slate-800 flex items-center justify-between transition cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <FolderGit2 className="w-4 h-4 text-teal-600" />
+              <FolderKanban className="w-4 h-4 text-teal-600" />
               <span>{t.projects} ({data.projects.length})</span>
             </div>
             {isSectionOpen('projects') ? (
@@ -1585,7 +1698,7 @@ export const CVEditor: React.FC<CVEditorProps> = ({
             className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100/80 font-bold text-sm text-slate-800 flex items-center justify-between transition cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <Award className="w-4 h-4 text-teal-600" />
+              <Wrench className="w-4 h-4 text-teal-600" />
               <span>{t.skills} ({data.skillCategories.length})</span>
             </div>
             {isSectionOpen('skills') ? (
@@ -1642,7 +1755,7 @@ export const CVEditor: React.FC<CVEditorProps> = ({
             className="w-full px-4 py-3 bg-slate-50 hover:bg-slate-100/80 font-bold text-sm text-slate-800 flex items-center justify-between transition cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
-              <Users2 className="w-4 h-4 text-teal-600" />
+              <ContactRound className="w-4 h-4 text-teal-600" />
               <span>{t.references} ({data.references.length})</span>
             </div>
             {isSectionOpen('references') ? (
@@ -1887,3 +2000,5 @@ export const CVEditor: React.FC<CVEditorProps> = ({
     </div>
   );
 };
+
+export const CVEditor = React.memo(CVEditorComponent);

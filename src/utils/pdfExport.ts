@@ -1,5 +1,4 @@
-import html2canvas from 'html2canvas-pro';
-import jsPDF from 'jspdf';
+import { PageSize, PAGE_SIZE_SPECS } from '../types/cv';
 
 // Helper to wait until all images in container have finished loading & decoding
 async function waitForImagesToLoad(container: HTMLElement): Promise<void> {
@@ -25,16 +24,17 @@ async function waitForImagesToLoad(container: HTMLElement): Promise<void> {
 }
 
 /**
- * Ultra-Sharp Crystal HD PDF Exporter
- * - Captured at scale: 4 (3,176 x 4,492 px @ ~384 DPI print-master resolution)
- * - Lossless PNG encoding (zero JPEG block distortion, zero blurry halos, 100% crisp typography)
- * - Guaranteed single-page fit without spilling onto page 2
- * - High-zoom proof: Text and lines remain razor sharp even at high zoom
+ * Optimized Crisp PDF Exporter
+ * - Dynamically loads jspdf and html2canvas-pro on demand
+ * - Adaptive capture scale (2.5 on mobile, 3 on desktop, with max-dimension cap)
+ * - Strict 1-page fit
+ * - Frees canvas memory after saving
  */
 export async function exportCVToPDF(
   elementId: string = 'cv-print-unscaled',
   candidateName: string = 'CV',
-  forceSinglePage: boolean = true
+  forceSinglePage: boolean = true,
+  pageSize: PageSize = 'a4'
 ): Promise<boolean> {
   const element = document.getElementById(elementId);
   if (!element) {
@@ -43,25 +43,43 @@ export async function exportCVToPDF(
     return false;
   }
 
+  const spec = PAGE_SIZE_SPECS[pageSize] || PAGE_SIZE_SPECS.a4;
+
   try {
-    // 1. Wait for document fonts to be completely ready
+    // 1. Concurrently load html2canvas-pro and jspdf only when user clicks Download
+    const [html2canvasModule, jspdfModule] = await Promise.all([
+      import('html2canvas-pro'),
+      import('jspdf'),
+    ]);
+
+    const html2canvas = html2canvasModule.default || html2canvasModule;
+    const jsPDF = jspdfModule.default || jspdfModule.jsPDF;
+
+    // 2. Wait for document fonts to be completely ready
     if (document.fonts && document.fonts.ready) {
       await document.fonts.ready;
     }
 
-    // 2. Wait for all images inside container to load completely
+    // 3. Wait for all images inside container to load completely
     await waitForImagesToLoad(element);
 
-    // 3. Capture with html2canvas-pro at Ultra-HD scale (scale: 4 for ~384 DPI crystal clarity)
-    // 794px * 4 = 3,176px; 1123px * 4 = 4,492px
+    // 4. Adaptive capture scale: 2.5 on mobile for speed/RAM, 3 on desktop, capped to safe max
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    let captureScale = isMobile ? 2.5 : 3;
+    const maxDimension = Math.max(spec.widthPx, spec.heightPx);
+    if (maxDimension * captureScale > 4096) {
+      captureScale = Number((4096 / maxDimension).toFixed(2));
+    }
+
+    // 5. Capture with html2canvas-pro
     const canvas = await html2canvas(element, {
-      scale: 4,
+      scale: captureScale,
       useCORS: true,
       allowTaint: true,
       logging: false,
       backgroundColor: '#ffffff',
-      windowWidth: 794,
-      windowHeight: 1123,
+      windowWidth: spec.widthPx,
+      windowHeight: spec.heightPx,
       imageTimeout: 15000,
       removeContainer: true,
       onclone: (clonedDoc) => {
@@ -71,7 +89,7 @@ export async function exportCVToPDF(
           clonedEl.style.setProperty('-webkit-font-smoothing', 'antialiased');
           clonedEl.style.setProperty('-moz-osx-font-smoothing', 'grayscale');
           clonedEl.style.setProperty('image-rendering', '-webkit-optimize-contrast');
-          
+
           // Force all SVG icons inside to render with geometric precision
           const svgs = clonedEl.querySelectorAll('svg');
           svgs.forEach((svg) => {
@@ -85,44 +103,42 @@ export async function exportCVToPDF(
       throw new Error('Canvas render produced empty output');
     }
 
-    // Standard A4 dimensions in mm: 210 x 297
+    // Initialize jsPDF with selected paper size
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: 'a4',
+      format: pageSize === 'letter' ? 'letter' : pageSize === 'legal' ? 'legal' : 'a4',
       compress: true,
     });
 
-    const a4WidthMm = 210;
-    const a4HeightMm = 297;
+    const targetWidthMm = spec.widthMm;
+    const targetHeightMm = spec.heightMm;
 
-    // Use LOSSLESS PNG instead of JPEG.
-    // JPEG introduces compression artifacts and blurry fringes around text glyphs when zoomed in.
-    // PNG is 100% lossless: every pixel, edge, and character remains pin-sharp!
+    // Lossless PNG: every pixel and font glyph remains pin-sharp
     const imgData = canvas.toDataURL('image/png');
 
-    // Single-Page Strict Fit: Fits completely onto exactly ONE page without spilling onto page 2!
+    // Single-Page Strict Fit: Fits completely onto exactly ONE page
     if (forceSinglePage) {
       const contentAspect = canvas.height / canvas.width;
-      const a4Aspect = a4HeightMm / a4WidthMm; // ~1.414
+      const paperAspect = targetHeightMm / targetWidthMm;
 
-      if (contentAspect <= a4Aspect) {
+      if (contentAspect <= paperAspect) {
         // Fits width perfectly, height has slight margin or exact
-        const renderHeight = a4WidthMm * contentAspect;
-        pdf.addImage(imgData, 'PNG', 0, 0, a4WidthMm, Math.min(a4HeightMm, renderHeight), undefined, 'FAST');
+        const renderHeight = targetWidthMm * contentAspect;
+        pdf.addImage(imgData, 'PNG', 0, 0, targetWidthMm, Math.min(targetHeightMm, renderHeight), undefined, 'FAST');
       } else {
-        // Content is slightly taller: fit by height so it NEVER spills onto page 2!
-        const renderWidth = a4HeightMm / contentAspect;
-        const offsetX = Math.max(0, (a4WidthMm - renderWidth) / 2);
-        pdf.addImage(imgData, 'PNG', offsetX, 0, renderWidth, a4HeightMm, undefined, 'FAST');
+        // Content is slightly taller: fit by height so it never spills over
+        const renderWidth = targetHeightMm / contentAspect;
+        const offsetX = Math.max(0, (targetWidthMm - renderWidth) / 2);
+        pdf.addImage(imgData, 'PNG', offsetX, 0, renderWidth, targetHeightMm, undefined, 'FAST');
       }
     } else {
       // Multi-page fallback if user explicitly requests multi-page
-      const pageCanvasHeight = Math.floor((canvas.width * a4HeightMm) / a4WidthMm);
+      const pageCanvasHeight = Math.floor((canvas.width * targetHeightMm) / targetWidthMm);
       const totalCanvasHeight = canvas.height;
 
       if (totalCanvasHeight <= pageCanvasHeight * 1.05) {
-        pdf.addImage(imgData, 'PNG', 0, 0, a4WidthMm, a4HeightMm, undefined, 'FAST');
+        pdf.addImage(imgData, 'PNG', 0, 0, targetWidthMm, targetHeightMm, undefined, 'FAST');
       } else {
         let renderedHeight = 0;
         let pageIndex = 0;
@@ -154,9 +170,11 @@ export async function exportCVToPDF(
               pdf.addPage();
             }
 
-            const sliceHeightMm = (currentSliceHeight * a4WidthMm) / canvas.width;
+            const sliceHeightMm = (currentSliceHeight * targetWidthMm) / canvas.width;
             const sliceImgData = pageCanvas.toDataURL('image/png');
-            pdf.addImage(sliceImgData, 'PNG', 0, 0, a4WidthMm, sliceHeightMm, undefined, 'FAST');
+            pdf.addImage(sliceImgData, 'PNG', 0, 0, targetWidthMm, sliceHeightMm, undefined, 'FAST');
+            pageCanvas.width = 0;
+            pageCanvas.height = 0;
           }
 
           renderedHeight += currentSliceHeight;
@@ -164,6 +182,10 @@ export async function exportCVToPDF(
         }
       }
     }
+
+    // Free main canvas memory immediately
+    canvas.width = 0;
+    canvas.height = 0;
 
     // Sanitize candidate name for filename: <CandidateName>_CV.pdf
     const sanitizedName =

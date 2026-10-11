@@ -55,12 +55,63 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
-          maximumFileSizeToCacheInBytes: 25 * 1024 * 1024,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,json}'],
+          maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          globIgnores: [
+            '**/mediapipe/**',
+            '**/*.wasm',
+            '**/*.tflite',
+            '**/*.binarypb',
+            '**/*.data',
+            '**/vendor-geo*',
+            '**/vendor-pdf*',
+          ],
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
           runtimeCaching: [
+            {
+              urlPattern: /.*vendor-geo.*\.js/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'vendor-geo-cache',
+                expiration: {
+                  maxEntries: 5,
+                  maxAgeSeconds: 60 * 60 * 24 * 365,
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            {
+              urlPattern: /.*vendor-pdf.*\.js/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'vendor-pdf-cache',
+                expiration: {
+                  maxEntries: 5,
+                  maxAgeSeconds: 60 * 60 * 24 * 365,
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            {
+              urlPattern: /^\/mediapipe\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'mediapipe-models-cache',
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
               handler: 'CacheFirst',
@@ -111,6 +162,36 @@ export default defineConfig(() => {
         },
       }),
     ],
+    build: {
+      target: 'esnext',
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('country-state-city')) {
+                return 'vendor-geo';
+              }
+              if (id.includes('jspdf') || id.includes('html2canvas-pro')) {
+                return 'vendor-pdf';
+              }
+              if (id.includes('react-easy-crop')) {
+                return 'vendor-cropper';
+              }
+              if (id.includes('@mediapipe')) {
+                return 'vendor-mediapipe';
+              }
+              if (id.includes('lucide-react')) {
+                return 'vendor-icons';
+              }
+              if (id.includes('react') || id.includes('react-dom')) {
+                return 'vendor-react';
+              }
+            }
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),

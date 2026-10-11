@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import confetti from 'canvas-confetti';
 import { CVLogo } from './CVLogo';
 import { CheckCircle2, Download, Smartphone, X, Sparkles, Monitor, ArrowRight } from 'lucide-react';
 
@@ -43,12 +42,18 @@ export const InstallModal: React.FC<InstallModalProps> = ({
     try {
       const outcome = await onInstall();
       if (outcome === 'accepted') {
-        confetti({
-          particleCount: 80,
-          spread: 60,
-          origin: { y: 0.6 },
-          colors: ['#0d9488', '#0ea5e9', '#38bdf8', '#ffffff'],
-        });
+        try {
+          const confettiModule = await import('canvas-confetti');
+          const confetti = confettiModule.default || confettiModule;
+          confetti({
+            particleCount: 80,
+            spread: 60,
+            origin: { y: 0.6 },
+            colors: ['#0d9488', '#0ea5e9', '#38bdf8', '#ffffff'],
+          });
+        } catch {
+          // ignore if confetti fails
+        }
         setStatusMessage('CV Maker installed successfully!');
         setTimeout(() => {
           onClose();
