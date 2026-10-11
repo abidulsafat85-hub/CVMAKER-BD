@@ -1,0 +1,8 @@
+{
+  "name": "CV Maker",
+  "description": "Create professional, stylish CVs and resumes with live preview, university database, and instant PDF download.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

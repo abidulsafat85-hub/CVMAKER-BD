@@ -1,0 +1,151 @@
+import fs from 'fs';
+import path from 'path';
+import sharp from 'sharp';
+
+const publicDir = path.resolve('public');
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir, { recursive: true });
+}
+
+// SVG with modern, elegant geometric "CV" typography
+// Primary colors: subtle teal (#0d9488) to sky-blue (#0ea5e9) with crisp white/slate
+const getSvg = (isMaskable = false, transparentBg = false) => {
+  // If maskable, scale down to 76% to respect Android safe zone (12% padding each side)
+  const scale = isMaskable ? 0.74 : 1.0;
+  const translate = isMaskable ? 512 * 0.13 : 0;
+
+  const bgRect = transparentBg
+    ? ''
+    : `<rect width="512" height="512" rx="104" fill="url(#bgGrad)" />
+       <circle cx="256" cy="256" r="220" fill="url(#glowGrad)" opacity="0.4" />`;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#091b29" />
+      <stop offset="50%" stop-color="#0c2335" />
+      <stop offset="100%" stop-color="#06121d" />
+    </linearGradient>
+
+    <!-- Subtle Teal & Sky-Blue Accent Gradient -->
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="55%" stop-color="#0ea5e9" />
+      <stop offset="100%" stop-color="#0d9488" />
+    </linearGradient>
+
+    <!-- White-to-Ice Highlight Gradient -->
+    <linearGradient id="lightGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e0f2fe" />
+    </linearGradient>
+
+    <!-- Teal Glow -->
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0284c7" stop-opacity="0.25" />
+      <stop offset="70%" stop-color="#0d9488" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Drop Shadow -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  ${bgRect}
+
+  <g transform="translate(${translate}, ${translate}) scale(${scale})" filter="url(#shadow)">
+    <!-- Letter C: Elegant geometric arc with chamfered terminals -->
+    <path
+      d="M 235 130
+         C 145 130 82 195 82 280
+         C 82 365 145 430 235 430
+         C 268 430 292 422 308 410
+         L 286 360
+         C 272 368 255 374 235 374
+         C 176 374 136 332 136 280
+         C 136 228 176 186 235 186
+         C 255 186 272 192 286 200
+         L 308 150
+         C 292 138 268 130 235 130 Z"
+      fill="url(#accentGrad)"
+    />
+
+    <!-- Letter V: Sharp, modern precision diagonal cuts interlocking seamlessly -->
+    <!-- Left diagonal arm of V -->
+    <path
+      d="M 232 135
+         L 316 385
+         L 366 385
+         L 282 135 Z"
+      fill="url(#lightGrad)"
+    />
+
+    <!-- Right diagonal arm of V -->
+    <path
+      d="M 440 135
+         L 326 430
+         L 272 430
+         L 386 135 Z"
+      fill="url(#accentGrad)"
+    />
+  </g>
+</svg>`;
+};
+
+async function generateAll() {
+  const masterSvg = getSvg(false, false);
+  const maskableSvg = getSvg(true, false);
+  const transparentSvg = getSvg(false, true);
+
+  // Write master SVG files
+  fs.writeFileSync(path.join(publicDir, 'icon.svg'), masterSvg);
+  fs.writeFileSync(path.join(publicDir, 'favicon.svg'), masterSvg);
+
+  // Generate PNGs
+  console.log('Generating pwa-192x192.png...');
+  await sharp(Buffer.from(masterSvg))
+    .resize(192, 192)
+    .png()
+    .toFile(path.join(publicDir, 'pwa-192x192.png'));
+
+  console.log('Generating pwa-512x512.png...');
+  await sharp(Buffer.from(masterSvg))
+    .resize(512, 512)
+    .png()
+    .toFile(path.join(publicDir, 'pwa-512x512.png'));
+
+  console.log('Generating pwa-maskable-512x512.png...');
+  await sharp(Buffer.from(maskableSvg))
+    .resize(512, 512)
+    .png()
+    .toFile(path.join(publicDir, 'pwa-maskable-512x512.png'));
+
+  console.log('Generating apple-touch-icon.png (180x180)...');
+  await sharp(Buffer.from(masterSvg))
+    .resize(180, 180)
+    .png()
+    .toFile(path.join(publicDir, 'apple-touch-icon.png'));
+
+  console.log('Generating favicon.ico / favicon.png...');
+  await sharp(Buffer.from(masterSvg))
+    .resize(64, 64)
+    .png()
+    .toFile(path.join(publicDir, 'favicon.png'));
+
+  console.log('Generating favicon.ico...');
+  // 32x32 ico fallback
+  await sharp(Buffer.from(masterSvg))
+    .resize(32, 32)
+    .png()
+    .toFile(path.join(publicDir, 'favicon.ico'));
+
+  console.log('All icons generated successfully!');
+}
+
+generateAll().catch(err => {
+  console.error(err);
+  process.exit(1);
+});

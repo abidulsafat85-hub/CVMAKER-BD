@@ -1,0 +1,210 @@
+import { CVData } from '../types/cv';
+
+export const BLANK_CV_DATA: CVData = {
+  personal: {
+    fullName: '',
+    jobTitle: '',
+    avatarUrl: '',
+    showAvatar: false,
+    gender: '',
+    phone: '',
+    website: '',
+    birthDate: '',
+    email: '',
+    presentAddress: {
+      country: 'Bangladesh',
+      divisionState: '',
+      district: '',
+      thanaCity: '',
+      streetRoadPostCode: '',
+    },
+    permanentAddress: {
+      country: 'Bangladesh',
+      divisionState: '',
+      district: '',
+      thanaCity: '',
+      streetRoadPostCode: '',
+    },
+    sameAsPresentAddress: true,
+    socialAccounts: [],
+  },
+  objective: '',
+  education: [],
+  workExperience: [],
+  trainingCourses: [],
+  projects: [],
+  activities: [],
+  skillCategories: [],
+  honorsAwards: [],
+  certifications: [],
+  references: [],
+  interests: '',
+  themeColor: '#389ba8',
+  fontFamily: 'Inter',
+  template: 'teal-split',
+};
+
+export const INITIAL_CV_DATA: CVData = {
+  personal: {
+    fullName: 'ABIDUL ISLAM SAFAT',
+    jobTitle: 'SOFTWARE ENGINEER & GRAPHIC DESIGNER',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
+    showAvatar: true,
+    gender: 'Male',
+    phone: '+880 1712-345678',
+    website: 'https://safat-portfolio.dev',
+    birthDate: '15 October 1999',
+    email: 'abidulsafat85@gmail.com',
+    presentAddress: {
+      country: 'Bangladesh',
+      divisionState: 'Chattogram',
+      district: 'Chattogram',
+      thanaCity: 'Lohagara',
+      streetRoadPostCode: 'Adhunagar',
+    },
+    permanentAddress: {
+      country: 'Bangladesh',
+      divisionState: 'Chattogram',
+      district: 'Chattogram',
+      thanaCity: 'Lohagara',
+      streetRoadPostCode: 'Adhunagar',
+    },
+    sameAsPresentAddress: true,
+    socialAccounts: [
+      { id: 'soc-1', platform: 'LinkedIn', usernameOrUrl: 'linkedin.com/in/abidulsafat' },
+      { id: 'soc-2', platform: 'GitHub', usernameOrUrl: 'github.com/safat' },
+      { id: 'soc-3', platform: 'Portfolio', usernameOrUrl: 'safat-portfolio.dev' },
+    ],
+  },
+  objective:
+    'Dedicated Software Engineer with strong experience in modern web technologies and UI/UX design. Eager to solve challenging problems and build scalable, user-centric software solutions.',
+  education: [
+    {
+      id: 'edu-1',
+      level: 'Honours / Bachelor',
+      degreeTitle: 'Bachelor',
+      institution: 'Daffodil International University (DIU)',
+      department: 'Software Engineering (SE)',
+      passingYear: '2024',
+      result: '3.82',
+    },
+    {
+      id: 'edu-2',
+      level: 'HSC / A-Level / Alim / Diploma',
+      degreeTitle: 'HSC',
+      institution: 'Chattogram College',
+      board: 'Chattogram',
+      group: 'Science',
+      passingYear: '2019',
+      resultType: 'GPA out of 5.00',
+      result: '5.00',
+    },
+    {
+      id: 'edu-3',
+      level: 'SSC / O-Level / Dakhil',
+      degreeTitle: 'SSC',
+      institution: 'Government Muslim High School',
+      board: 'Chattogram',
+      group: 'Science',
+      passingYear: '2017',
+      resultType: 'GPA out of 5.00',
+      result: '5.00',
+    },
+  ],
+  workExperience: [
+    {
+      id: 'work-1',
+      company: 'Brain Station 23',
+      role: 'Junior Frontend Developer',
+      startYear: '2023',
+      endYear: 'Present',
+      description:
+        '- Developed responsive enterprise dashboards using React, TypeScript and Tailwind CSS.\n- Collaborated with UI/UX designers to translate Figma prototypes into pixel-perfect components.\n- Optimized client-side performance, reducing initial load time by 28%.',
+    },
+  ],
+  trainingCourses: [
+    {
+      id: 'train-1',
+      title: 'Full Stack Web Development & Cloud Deployment',
+      institution: 'BASIS Institute of Technology & Management (BITM)',
+      duration: '3 Months (2023)',
+      description: 'Hands-on training covering modern React ecosystem, REST APIs, and containerized deployment.',
+    },
+  ],
+  projects: [
+    {
+      id: 'proj-1',
+      title: 'Amar Bazar - E-Commerce Platform',
+      role: 'Lead Developer',
+      tools: 'React, Node.js, Express, MongoDB, Tailwind CSS',
+      description:
+        'A full-featured digital marketplace supporting bKash/Nagad payment gateways, inventory management, and automated invoice generation.',
+      link: 'https://github.com/safat/amar-bazar',
+    },
+  ],
+  activities: [
+    {
+      id: 'act-1',
+      organization: 'DIU Computer & Programming Club',
+      role: 'Executive Member',
+      year: '2022 - 2023',
+      description:
+        '- Organized programming workshops and inter-department coding contests.\n- Mentored junior students in data structures and frontend basics.',
+    },
+  ],
+  skillCategories: [
+    {
+      id: 'skill-1',
+      name: 'Technical Skills',
+      items: 'JavaScript (ES6+), TypeScript, React, Next.js, Node.js, Tailwind CSS, Git',
+    },
+    {
+      id: 'skill-2',
+      name: 'Design & Tools',
+      items: 'Figma, Adobe Photoshop, Illustrator, Postman, VS Code',
+    },
+    {
+      id: 'skill-3',
+      name: 'Language Proficiency',
+      items: 'English (Professional), Bengali (Native)',
+    },
+  ],
+  honorsAwards: [
+    {
+      id: 'honor-1',
+      year: '2023',
+      title: "Dean's Honor Award",
+      description: 'Faculty of Science and Information Technology, DIU.',
+    },
+  ],
+  certifications: [
+    {
+      id: 'cert-1',
+      year: '2023',
+      title: 'Certified React Developer',
+      issuer: 'HackerRank & Coursera',
+    },
+  ],
+  references: [
+    {
+      id: 'ref-1',
+      name: 'Dr. Md. Ismail Jabiullah',
+      designation: 'Professor & Head',
+      organization: 'Department of Software Engineering, DIU',
+      phone: '+880 1711-223344',
+      email: 'ismail@daffodilvarsity.edu.bd',
+    },
+    {
+      id: 'ref-2',
+      name: 'Tanvir Hossain',
+      designation: 'Lead Software Architect',
+      organization: 'Brain Station 23',
+      phone: '+880 1819-876543',
+      email: 'tanvir.h@brainstation-23.com',
+    },
+  ],
+  interests: '- Competitive programming, travel photography, tech podcasts, badminton',
+  themeColor: '#389ba8',
+  fontFamily: 'Inter',
+  template: 'teal-split',
+};
