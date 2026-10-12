@@ -75,10 +75,10 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="font-extrabold text-base sm:text-xl tracking-tight text-slate-900 leading-none">
-                CV Maker
+                CV Maker-BD
               </span>
-              <span className="hidden xs:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200/80">
-                PWA
+              <span className="hidden xs:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                BD
               </span>
             </div>
             <span className="hidden sm:inline-block text-[11px] text-slate-500 font-medium">

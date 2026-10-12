@@ -9,7 +9,47 @@ import {
   Globe,
   Calendar,
   Play,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Github,
+  Youtube,
+  Twitter,
 } from 'lucide-react';
+
+const renderSocialIcon = (platform: string, size = 9, color = '#ffffff') => {
+  const p = (platform || '').toLowerCase();
+  if (p.includes('facebook') || p.includes('fb')) {
+    return <Facebook style={{ width: `${size}px`, height: `${size}px`, color }} />;
+  }
+  if (p.includes('instagram') || p.includes('insta')) {
+    return <Instagram style={{ width: `${size}px`, height: `${size}px`, color }} />;
+  }
+  if (p.includes('linkedin')) {
+    return <Linkedin style={{ width: `${size}px`, height: `${size}px`, color }} />;
+  }
+  if (p.includes('github')) {
+    return <Github style={{ width: `${size}px`, height: `${size}px`, color }} />;
+  }
+  if (p.includes('youtube')) {
+    return <Youtube style={{ width: `${size}px`, height: `${size}px`, color }} />;
+  }
+  if (p.includes('twitter') || p.includes('x')) {
+    return <Twitter style={{ width: `${size}px`, height: `${size}px`, color }} />;
+  }
+  return <Globe style={{ width: `${size}px`, height: `${size}px`, color }} />;
+};
+
+const detectSocialPlatform = (urlOrHandle: string): string => {
+  const str = (urlOrHandle || '').toLowerCase();
+  if (str.includes('facebook') || str.includes('fb.com') || str.includes('fb.me')) return 'Facebook';
+  if (str.includes('instagram') || str.includes('instagr.am')) return 'Instagram';
+  if (str.includes('linkedin')) return 'LinkedIn';
+  if (str.includes('github')) return 'GitHub';
+  if (str.includes('youtube') || str.includes('youtu.be')) return 'YouTube';
+  if (str.includes('twitter') || str.includes('x.com')) return 'Twitter';
+  return 'Website';
+};
 
 interface CVPreviewProps {
   data: CVData;
@@ -188,7 +228,13 @@ const CVPreviewComponent: React.FC<CVPreviewProps> = ({ data, isPdfMode = false 
         )}
 
         {/* Contact Information Grid */}
-        {(personal.phone || personal.email || formattedPresentAddr || personal.website || personal.birthDate || personal.gender) && (
+        {(personal.phone ||
+          personal.email ||
+          formattedPresentAddr ||
+          personal.website ||
+          (personal.socialAccounts && personal.socialAccounts.some((s) => s.usernameOrUrl && s.usernameOrUrl.trim())) ||
+          personal.birthDate ||
+          personal.gender) && (
           <div
             style={{
               display: 'grid',
@@ -243,13 +289,48 @@ const CVPreviewComponent: React.FC<CVPreviewProps> = ({ data, isPdfMode = false 
             {personal.website && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Globe style={{ width: '9px', height: '9px', color: '#ffffff' }} />
+                  {renderSocialIcon(detectSocialPlatform(personal.website), 9, '#ffffff')}
                 </div>
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {personal.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
                 </span>
               </div>
             )}
+
+            {personal.socialAccounts &&
+              personal.socialAccounts.map((account) => {
+                if (!account.usernameOrUrl || !account.usernameOrUrl.trim()) return null;
+                const cleanDisplay = account.usernameOrUrl
+                  .replace(/^https?:\/\/(www\.)?/, '')
+                  .replace(/\/$/, '');
+                return (
+                  <div key={account.id} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <div
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        backgroundColor: 'rgba(255,255,255,0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {renderSocialIcon(account.platform, 9, '#ffffff')}
+                    </div>
+                    <span
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {cleanDisplay}
+                    </span>
+                  </div>
+                );
+              })}
 
             {personal.birthDate && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>

@@ -23,8 +23,8 @@ export default defineConfig(() => {
         ],
         manifest: {
           id: '/',
-          name: 'CV Maker',
-          short_name: 'CV Maker',
+          name: 'CV Maker-BD',
+          short_name: 'CV Maker-BD',
           description: 'Create professional, stylish CVs and resumes with live preview, university database, and instant PDF download.',
           theme_color: '#0d9488',
           background_color: '#ffffff',

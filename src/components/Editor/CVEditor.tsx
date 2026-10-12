@@ -11,6 +11,8 @@ import {
   SkillCategory,
   HonorAwardItem,
   CertificationItem,
+  SocialAccountItem,
+  SocialPlatform,
   BANGLADESH_EDUCATION_BOARDS,
   BANGLADESH_EDUCATION_GROUPS,
 } from '../../types/cv';
@@ -46,7 +48,79 @@ import {
   Wrench,
   Trophy,
   ContactRound,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Github,
+  Youtube,
+  Twitter,
 } from 'lucide-react';
+
+const SOCIAL_PLATFORMS_LIST: {
+  platform: SocialPlatform;
+  label: string;
+  icon: (className?: string) => React.ReactNode;
+  btnStyle: string;
+  placeholder: string;
+  defaultPrefix: string;
+}[] = [
+  {
+    platform: 'Facebook',
+    label: 'Facebook',
+    icon: (cls = 'w-3.5 h-3.5 text-[#1877F2]') => <Facebook className={cls} />,
+    btnStyle: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300',
+    placeholder: 'facebook.com/username',
+    defaultPrefix: 'facebook.com/',
+  },
+  {
+    platform: 'Instagram',
+    label: 'Instagram',
+    icon: (cls = 'w-3.5 h-3.5 text-[#E1306C]') => <Instagram className={cls} />,
+    btnStyle: 'bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100 hover:border-pink-300',
+    placeholder: 'instagram.com/username',
+    defaultPrefix: 'instagram.com/',
+  },
+  {
+    platform: 'LinkedIn',
+    label: 'LinkedIn',
+    icon: (cls = 'w-3.5 h-3.5 text-[#0A66C2]') => <Linkedin className={cls} />,
+    btnStyle: 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100 hover:border-sky-300',
+    placeholder: 'linkedin.com/in/username',
+    defaultPrefix: 'linkedin.com/in/',
+  },
+  {
+    platform: 'GitHub',
+    label: 'GitHub',
+    icon: (cls = 'w-3.5 h-3.5 text-slate-800') => <Github className={cls} />,
+    btnStyle: 'bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200 hover:border-slate-400',
+    placeholder: 'github.com/username',
+    defaultPrefix: 'github.com/',
+  },
+  {
+    platform: 'YouTube',
+    label: 'YouTube',
+    icon: (cls = 'w-3.5 h-3.5 text-[#FF0000]') => <Youtube className={cls} />,
+    btnStyle: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 hover:border-red-300',
+    placeholder: 'youtube.com/@channel',
+    defaultPrefix: 'youtube.com/@',
+  },
+  {
+    platform: 'X (Twitter)',
+    label: 'X (Twitter)',
+    icon: (cls = 'w-3.5 h-3.5 text-slate-800') => <Twitter className={cls} />,
+    btnStyle: 'bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200 hover:border-slate-400',
+    placeholder: 'x.com/username',
+    defaultPrefix: 'x.com/',
+  },
+  {
+    platform: 'Portfolio',
+    label: 'Website',
+    icon: (cls = 'w-3.5 h-3.5 text-teal-600') => <Globe className={cls} />,
+    btnStyle: 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100 hover:border-teal-300',
+    placeholder: 'portfolio.dev or yoursite.com',
+    defaultPrefix: '',
+  },
+];
 
 interface CVEditorProps {
   data: CVData;
@@ -239,6 +313,32 @@ const CVEditorComponent: React.FC<CVEditorProps> = ({
     });
   };
 
+  const socialAccounts = data.personal.socialAccounts || [];
+
+  const handleAddSocialAccount = (platform: SocialPlatform, defaultPrefix: string) => {
+    const existing = socialAccounts.find(
+      (a) => a.platform.toLowerCase() === platform.toLowerCase()
+    );
+    if (existing) {
+      return;
+    }
+    const newAccount: SocialAccountItem = {
+      id: `soc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      platform,
+      usernameOrUrl: defaultPrefix,
+    };
+    updatePersonal('socialAccounts', [...socialAccounts, newAccount]);
+  };
+
+  const handleUpdateSocialAccount = (id: string, value: string) => {
+    const updated = socialAccounts.map((a) => (a.id === id ? { ...a, usernameOrUrl: value } : a));
+    updatePersonal('socialAccounts', updated);
+  };
+
+  const handleRemoveSocialAccount = (id: string) => {
+    const filtered = socialAccounts.filter((a) => a.id !== id);
+    updatePersonal('socialAccounts', filtered);
+  };
 
   const handlePhotoUploadChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -722,21 +822,119 @@ const CVEditorComponent: React.FC<CVEditorProps> = ({
                 </div>
               </div>
 
-              {/* Optional Website / Portfolio / LinkedIn */}
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1 flex items-center justify-between text-xs">
-                  <span>{t.website}</span>
+              {/* Optional Website / Portfolio & Social Accounts (Facebook, Instagram, LinkedIn, etc.) */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block font-semibold text-slate-700 text-xs flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-teal-600" />
+                    <span>{lang === 'bn' ? 'পোর্টফোলিও / ওয়েবসাইট / সোশ্যাল লিংক' : 'Portfolio / LinkedIn / Website'}</span>
+                  </label>
                   <span className="text-[10px] text-slate-400 font-normal">
                     {lang === 'bn' ? '(ঐচ্ছিক)' : '(Optional)'}
                   </span>
-                </label>
-                <input
-                  type="text"
-                  value={data.personal.website}
-                  onChange={(e) => updatePersonal('website', e.target.value)}
-                  placeholder="e.g. linkedin.com/in/username or portfolio.dev"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden text-xs"
-                />
+                </div>
+
+                {/* Primary Website / Portfolio / LinkedIn input */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={data.personal.website || ''}
+                    onChange={(e) => updatePersonal('website', e.target.value)}
+                    placeholder="e.g. linkedin.com/in/username or portfolio.dev"
+                    className="w-full px-3 py-2 pl-8 rounded-lg border border-slate-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden text-xs"
+                  />
+                  <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    <Globe className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+
+                {/* Quick Add Social Media Icons Bar */}
+                <div className="bg-slate-50/90 p-2.5 rounded-xl border border-slate-200/80 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] text-slate-600 font-semibold">
+                    <span className="flex items-center gap-1">
+                      <span>{lang === 'bn' ? 'সোশ্যাল প্রোফাইল আইকন (ক্লিক করুন):' : 'Social Media Icons (Click to add):'}</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      {lang === 'bn' ? 'ফেসবুক, ইনস্টাগ্রাম, লিংকডইন' : 'Facebook, Instagram, etc.'}
+                    </span>
+                  </div>
+
+                  {/* Icon pills */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {SOCIAL_PLATFORMS_LIST.map((item) => {
+                      const isAdded = socialAccounts.some(
+                        (a) => a.platform.toLowerCase() === item.platform.toLowerCase()
+                      );
+                      return (
+                        <button
+                          key={item.platform}
+                          type="button"
+                          onClick={() => handleAddSocialAccount(item.platform, item.defaultPrefix)}
+                          title={`Add ${item.label}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition cursor-pointer active:scale-95 shadow-2xs ${
+                            isAdded
+                              ? 'bg-slate-200/80 text-slate-500 border-slate-300 opacity-60 cursor-default'
+                              : `${item.btnStyle}`
+                          }`}
+                        >
+                          {item.icon('w-3.5 h-3.5 shrink-0')}
+                          <span>{item.label}</span>
+                          {!isAdded && <Plus className="w-3 h-3 opacity-70 ml-0.5 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Active Social Media Account Inputs List */}
+                  {socialAccounts.length > 0 && (
+                    <div className="pt-2 space-y-2 border-t border-slate-200">
+                      {socialAccounts.map((account) => {
+                        const meta = SOCIAL_PLATFORMS_LIST.find(
+                          (m) => m.platform.toLowerCase() === account.platform.toLowerCase()
+                        ) || {
+                          platform: account.platform as SocialPlatform,
+                          label: account.platform,
+                          icon: (cls?: string) => <Globe className={cls || 'w-3.5 h-3.5 text-teal-600'} />,
+                          btnStyle: 'bg-teal-50 text-teal-700 border-teal-200',
+                          placeholder: 'Profile or URL link...',
+                          defaultPrefix: '',
+                        };
+
+                        return (
+                          <div
+                            key={account.id}
+                            className="flex items-center gap-2 bg-white p-1.5 pl-2.5 rounded-lg border border-slate-200 shadow-2xs"
+                          >
+                            <div className="flex items-center gap-1.5 shrink-0 min-w-[95px]">
+                              {meta.icon('w-3.5 h-3.5 shrink-0')}
+                              <span className="text-xs font-bold text-slate-800 truncate">
+                                {meta.label}
+                              </span>
+                            </div>
+
+                            <input
+                              type="text"
+                              value={account.usernameOrUrl}
+                              onChange={(e) => handleUpdateSocialAccount(account.id, e.target.value)}
+                              placeholder={meta.placeholder}
+                              className="flex-1 px-2.5 py-1.5 text-xs rounded-md border border-slate-200 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-hidden bg-slate-50/50 focus:bg-white"
+                            />
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSocialAccount(account.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition cursor-pointer shrink-0"
+                              title={lang === 'bn' ? 'মুছুন' : 'Remove'}
+                              aria-label="Remove social account"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Date of Birth & Gender (Strictly English in English mode) */}
